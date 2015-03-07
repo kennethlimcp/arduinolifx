@@ -53,10 +53,10 @@ const boolean DEBUG = 0;
 
 // Enter a MAC address and IP address for your controller below.
 // The IP address will be dependent on your local network:
-byte mac[] = { 
+byte mac[] = {
   0xDE, 0xAD, 0xDE, 0xAD, 0xDE, 0xAD };
-byte site_mac[] = { 
-  0xDE, 0xAD, 0xDE, 0xAD, 0xDE, 0xAD };
+byte site_mac[] = {
+  0x4c, 0x49, 0x46, 0x58, 0x56, 0x32 }; // spells out "LIFXV2" - version 2 of the app changes the site address to this...
 
 // pins for the RGB LED:
 const int redPin = A4;
@@ -117,201 +117,174 @@ void setup() {
   LIFXBulb.setFadingSteps(20);
   LIFXBulb.setFadingSpeed(20);
 
-  // read in settings from EEPROM (if they exist) for bulb label and tags
-  if(EEPROM.read(EEPROM_CONFIG_START) == EEPROM_CONFIG[0] && EEPROM.read(EEPROM_CONFIG_START+1) == EEPROM_CONFIG[1] && EEPROM.read(EEPROM_CONFIG_START+2) == EEPROM_CONFIG[2]) {
-      if(DEBUG) {
-        Serial.println(F("Config exists in EEPROM, reading..."));
-        Serial.print(F("Bulb label: "));
-      }
 
-      for(int i = 0; i < LifxBulbLabelLength; i++) {
-        bulbLabel[i] = EEPROM.read(EEPROM_BULB_LABEL_START+i);
-
+    // read in settings from EEPROM (if they exist) for bulb label and tags
+    if(EEPROM.read(EEPROM_CONFIG_START) == EEPROM_CONFIG[0] && EEPROM.read(EEPROM_CONFIG_START+1) == EEPROM_CONFIG[1] && EEPROM.read(EEPROM_CONFIG_START+2) == EEPROM_CONFIG[2]) {
         if(DEBUG) {
-          Serial.print(bulbLabel[i]);
+            Serial.println(F("Config exists in EEPROM, reading..."));
+            Serial.print(F("Bulb label: "));
         }
-      }
-
-      if(DEBUG) {
-        Serial.println();
-        Serial.print(F("Bulb tags: "));
-      }
-
-      for(int i = 0; i < LifxBulbTagsLength; i++) {
-        bulbTags[i] = EEPROM.read(EEPROM_BULB_TAGS_START+i);
-
+        for(int i = 0; i < LifxBulbLabelLength; i++) {
+            bulbLabel[i] = EEPROM.read(EEPROM_BULB_LABEL_START+i);
+            if(DEBUG) {Serial.print(bulbLabel[i]);}
+        }
         if(DEBUG) {
-          Serial.print(bulbTags[i]);
+            Serial.println();
+            Serial.print(F("Bulb tags: "));
         }
-      }
-
-      if(DEBUG) {
-        Serial.println();
-        Serial.print(F("Bulb tag labels: "));
-      }
-
-      for(int i = 0; i < LifxBulbTagLabelsLength; i++) {
-        bulbTagLabels[i] = EEPROM.read(EEPROM_BULB_TAG_LABELS_START+i);
-
+        for(int i = 0; i < LifxBulbTagsLength; i++) {
+            bulbTags[i] = EEPROM.read(EEPROM_BULB_TAGS_START+i);
+            if(DEBUG) {Serial.print(bulbTags[i]);}
+        }
         if(DEBUG) {
-          Serial.print(bulbTagLabels[i]);
+            Serial.println();
+            Serial.print(F("Bulb tag labels: "));
         }
-      }
+        for(int i = 0; i < LifxBulbTagLabelsLength; i++) {
+            bulbTagLabels[i] = EEPROM.read(EEPROM_BULB_TAG_LABELS_START+i);
+            if(DEBUG) {Serial.print(bulbTagLabels[i]);}
+        }
+        if(DEBUG) {
+            Serial.println();
+            Serial.println(F("Done reading EEPROM config."));
+        }
+    } else {
+        // first time sketch has been run, set defaults into EEPROM
+        if(DEBUG) {
+            Serial.println(F("Config does not exist in EEPROM, writing..."));
+        }
 
-      if(DEBUG) {
-        Serial.println();
-        Serial.println(F("Done reading EEPROM config."));
-      }
-  } else {
-    // first time sketch has been run, set defaults into EEPROM
-    if(DEBUG) {
-      Serial.println(F("Config does not exist in EEPROM, writing..."));
-    }
+        EEPROM.write(EEPROM_CONFIG_START, EEPROM_CONFIG[0]);
+        EEPROM.write(EEPROM_CONFIG_START+1, EEPROM_CONFIG[1]);
+        EEPROM.write(EEPROM_CONFIG_START+2, EEPROM_CONFIG[2]);
 
-    EEPROM.write(EEPROM_CONFIG_START, EEPROM_CONFIG[0]);
-    EEPROM.write(EEPROM_CONFIG_START+1, EEPROM_CONFIG[1]);
-    EEPROM.write(EEPROM_CONFIG_START+2, EEPROM_CONFIG[2]);
+        for(int i = 0; i < LifxBulbLabelLength; i++) {
+            EEPROM.write(EEPROM_BULB_LABEL_START+i, bulbLabel[i]);
+        }
 
-    for(int i = 0; i < LifxBulbLabelLength; i++) {
-       EEPROM.write(EEPROM_BULB_LABEL_START+i, bulbLabel[i]);
-    }
+        for(int i = 0; i < LifxBulbTagsLength; i++) {
+            EEPROM.write(EEPROM_BULB_TAGS_START+i, bulbTags[i]);
+        }
 
-    for(int i = 0; i < LifxBulbTagsLength; i++) {
-      EEPROM.write(EEPROM_BULB_TAGS_START+i, bulbTags[i]);
-    }
+        for(int i = 0; i < LifxBulbTagLabelsLength; i++) {
+            EEPROM.write(EEPROM_BULB_TAG_LABELS_START+i, bulbTagLabels[i]);
+        }
 
-    for(int i = 0; i < LifxBulbTagLabelsLength; i++) {
-      EEPROM.write(EEPROM_BULB_TAG_LABELS_START+i, bulbTagLabels[i]);
+        if(DEBUG) {Serial.println(F("Done writing EEPROM config."));}
     }
 
     if(DEBUG) {
-      Serial.println(F("Done writing EEPROM config."));
+        Serial.println(F("EEPROM dump:"));
+        for(int i = 0; i < 256; i++) {
+            Serial.print(EEPROM.read(i));
+            Serial.print(SPACE);
+        }
+        Serial.println();
     }
-  }
 
-  if(DEBUG) {
-    Serial.println(F("EEPROM dump:"));
-    for(int i = 0; i < 256; i++) {
-      Serial.print(EEPROM.read(i));
-      Serial.print(SPACE);
-    }
-    Serial.println();
-  }
-
-  // set the bulb based on the initial colors
-  setLight();
+    // set the bulb based on the initial colors
+    setLight();
 }
 
 
 
 void loop() {
-  LIFXBulb.tick();
-  // buffers for receiving and sending data
-  byte PacketBuffer[128]; //buffer to hold incoming packet,
+    // buffers for receiving and sending data
+    byte PacketBuffer[128]; //buffer to hold incoming packet,
 
-  Client = Server.available();
-  if (Client == true) {
-    // read incoming data
-    int packetSize = 0;
-    while (Client.available()) {
-      byte b = Client.read();
-      PacketBuffer[packetSize] = b;
-      packetSize++;
-    }
+    Client = Server.available();
+    if (Client == true) {
+        // read incoming data
+        int packetSize = 0;
+        while (Client.available()) {
+            byte b = Client.read();
+            PacketBuffer[packetSize] = b;
+            packetSize++;
+        }
 
     if(DEBUG) {
-      Serial.print(F("-TCP "));
-      for(int i = 0; i < LifxPacketSize; i++) {
-        Serial.print(PacketBuffer[i], HEX);
-        Serial.print(SPACE);
-      }
-
-      for(int i = LifxPacketSize; i < packetSize; i++) {
-        Serial.print(PacketBuffer[i], HEX);
-        Serial.print(SPACE);
-      }
-      Serial.println();
+        Serial.print(F("-TCP "));
+        for(int i = 0; i < LifxPacketSize; i++) {
+            Serial.print(PacketBuffer[i], HEX);
+            Serial.print(SPACE);
+        }
+        for(int i = LifxPacketSize; i < packetSize; i++) {
+            Serial.print(PacketBuffer[i], HEX);
+            Serial.print(SPACE);
+        }
+        Serial.println();
     }
+
     // push the data into the LifxPacket structure
     LifxPacket request;
     processRequest(PacketBuffer, sizeof(PacketBuffer), request);
 
     //respond to the request
     handleRequest(request);
-  }
+    }
 
     // if there's UDP data available, read a packet
-  int packetSize = Udp.parsePacket();
-  if(packetSize) {
-    Udp.read(PacketBuffer, 128);
-
-    if(DEBUG) {
-      Serial.print(F("-UDP "));
-      for(int i = 0; i < LifxPacketSize; i++) {
-        Serial.print(PacketBuffer[i], HEX);
-        Serial.print(SPACE);
-      }
-
-      for(int i = LifxPacketSize; i < packetSize; i++) {
-        Serial.print(PacketBuffer[i], HEX);
-        Serial.print(SPACE);
-      }
-      Serial.println();
+    int packetSize = Udp.parsePacket();
+    if(packetSize) {
+        Udp.read(PacketBuffer, 128);
+        if(DEBUG) {
+            Serial.print(F("-UDP "));
+            for(int i = 0; i < LifxPacketSize; i++) {
+                Serial.print(PacketBuffer[i], HEX);
+                Serial.print(SPACE);
+            }
+            for(int i = LifxPacketSize; i < packetSize; i++) {
+                Serial.print(PacketBuffer[i], HEX);
+                Serial.print(SPACE);
+            }
+            Serial.println();
+        }
+        // push the data into the LifxPacket structure
+        LifxPacket request;
+        processRequest(PacketBuffer, sizeof(PacketBuffer), request);
+        //respond to the request
+        handleRequest(request);
     }
 
-    // push the data into the LifxPacket structure
-    LifxPacket request;
-    processRequest(PacketBuffer, sizeof(PacketBuffer), request);
-
-    //respond to the request
-    handleRequest(request);
-
-  }
-  //Not available in Spark
-  //Ethernet.maintain();
-
-  //delay(10);
 }
 
 
 void setLight() {
-  if(DEBUG) {
-    Serial.print(F("Set light - "));
-    Serial.print(F("hue: "));
-    Serial.print(hue);
-    Serial.print(F(", sat: "));
-    Serial.print(sat);
-    Serial.print(F(", bri: "));
-    Serial.print(bri);
-    Serial.print(F(", kel: "));
-    Serial.print(kel);
-    Serial.print(F(", power: "));
-    Serial.print(power_status);
-    Serial.println(power_status ? " (on)" : "(off)");
-  }
-
-  if(power_status) {
-    int this_hue = map(hue, 0, 65535, 0, 359);
-    int this_sat = map(sat, 0, 65535, 0, 255);
-    int this_bri = map(bri, 0, 65535, 0, 255);
-
-    // if we are setting a "white" colour (kelvin temp)
-    if(kel > 0 && this_sat < 1) {
-      // convert kelvin to RGB
-      rgb kelvin_rgb;
-      kelvin_rgb = kelvinToRGB(kel);
-
-      // convert the RGB into HSV
-      hsv kelvin_hsv;
-      kelvin_hsv = rgb2hsv(kelvin_rgb);
-
-      // set the new values ready to go to the bulb (brightness does not change, just hue and saturation)
-      this_hue = kelvin_hsv.h;
-      this_sat = map(kelvin_hsv.s*1000, 0, 1000, 0, 255); //multiply the sat by 1000 so we can map the percentage value returned by rgb2hsv
+    if(DEBUG) {
+        Serial.print(F("Set light - "));
+        Serial.print(F("hue: "));
+        Serial.print(hue);
+        Serial.print(F(", sat: "));
+        Serial.print(sat);
+        Serial.print(F(", bri: "));
+        Serial.print(bri);
+        Serial.print(F(", kel: "));
+        Serial.print(kel);
+        Serial.print(F(", power: "));
+        Serial.print(power_status);
+        Serial.println(power_status ? " (on)" : "(off)");
     }
 
-    LIFXBulb.fadeHSB(this_hue, this_sat, this_bri);
-  }
+    if(power_status) {
+        int this_hue = map(hue, 0, 65535, 0, 359);
+        int this_sat = map(sat, 0, 65535, 0, 255);
+        int this_bri = map(bri, 0, 65535, 0, 255);
+
+        // if we are setting a "white" colour (kelvin temp)
+        if(kel > 0 && this_sat < 1) {
+            // convert kelvin to RGB
+            rgb kelvin_rgb;
+            kelvin_rgb = kelvinToRGB(kel);
+            // convert the RGB into HSV
+            hsv kelvin_hsv;
+            kelvin_hsv = rgb2hsv(kelvin_rgb);
+
+            // set the new values ready to go to the bulb (brightness does not change, just hue and saturation)
+            this_hue = kelvin_hsv.h;
+            this_sat = map(kelvin_hsv.s*1000, 0, 1000, 0, 255); //multiply the sat by 1000 so we can map the percentage value returned by rgb2hsv
+        }
+        LIFXBulb.fadeHSB(this_hue, this_sat, this_bri);
+    }
   else {
     LIFXBulb.fadeHSB(0, 0, 0);
   }
@@ -571,6 +544,100 @@ void handleRequest(LifxPacket &request) {
     }
     break;
 
+  case GET_VERSION_STATE:
+    {
+      // respond to get command
+      response.packet_type = VERSION_STATE;
+      response.protocol = LifxProtocol_AllBulbsResponse;
+      byte VersionData[] = {
+        lowByte(LifxBulbVendor),
+        highByte(LifxBulbVendor),
+        0x00,
+        0x00,
+        lowByte(LifxBulbProduct),
+        highByte(LifxBulbProduct),
+        0x00,
+        0x00,
+        lowByte(LifxBulbVersion),
+        highByte(LifxBulbVersion),
+        0x00,
+        0x00
+        };
+
+      memcpy(response.data, VersionData, sizeof(VersionData));
+      response.data_size = sizeof(VersionData);
+      sendPacket(response);
+
+      /*
+      // respond again to get command (real bulbs respond twice, slightly diff data (see below)
+      response.packet_type = VERSION_STATE;
+      response.protocol = LifxProtocol_AllBulbsResponse;
+      byte VersionData2[] = {
+        lowByte(LifxVersionVendor), //vendor stays the same
+        highByte(LifxVersionVendor),
+        0x00,
+        0x00,
+        lowByte(LifxVersionProduct*2), //product is 2, rather than 1
+        highByte(LifxVersionProduct*2),
+        0x00,
+        0x00,
+        0x00, //version is 0, rather than 1
+        0x00,
+        0x00,
+        0x00
+        };
+
+      memcpy(response.data, VersionData2, sizeof(VersionData2));
+      response.data_size = sizeof(VersionData2);
+      sendPacket(response);
+      */
+
+    }
+    break;
+
+
+  case GET_MESH_FIRMWARE_STATE:
+    {
+      // respond to get command
+      response.packet_type = MESH_FIRMWARE_STATE;
+      response.protocol = LifxProtocol_AllBulbsResponse;
+      // timestamp data comes from observed packet from a LIFX v1.5 bulb
+      byte MeshVersionData[] = {
+        0x00, 0x2e, 0xc3, 0x8b, 0xef, 0x30, 0x86, 0x13, //build timestamp
+        0xe0, 0x25, 0x76, 0x45, 0x69, 0x81, 0x8b, 0x13, //install timestamp
+        lowByte(LifxFirmwareVersionMinor),
+        highByte(LifxFirmwareVersionMinor),
+        lowByte(LifxFirmwareVersionMajor),
+        highByte(LifxFirmwareVersionMajor)
+        };
+
+      memcpy(response.data, MeshVersionData, sizeof(MeshVersionData));
+      response.data_size = sizeof(MeshVersionData);
+      sendPacket(response);
+    }
+    break;
+
+
+  case GET_WIFI_FIRMWARE_STATE:
+    {
+      // respond to get command
+      response.packet_type = WIFI_FIRMWARE_STATE;
+      response.protocol = LifxProtocol_AllBulbsResponse;
+      // timestamp data comes from observed packet from a LIFX v1.5 bulb
+      byte WifiVersionData[] = {
+        0x00, 0xc8, 0x5e, 0x31, 0x99, 0x51, 0x86, 0x13, //build timestamp
+        0xc0, 0x0c, 0x07, 0x00, 0x48, 0x46, 0xd9, 0x43, //install timestamp
+        lowByte(LifxFirmwareVersionMinor),
+        highByte(LifxFirmwareVersionMinor),
+        lowByte(LifxFirmwareVersionMajor),
+        highByte(LifxFirmwareVersionMajor)
+        };
+
+      memcpy(response.data, WifiVersionData, sizeof(WifiVersionData));
+      response.data_size = sizeof(WifiVersionData);
+      sendPacket(response);
+    }
+    break;
 
   default:
     {
