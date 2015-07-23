@@ -12,9 +12,7 @@
 #ifndef GUARD_RGB
 #define GUARD_RGB
 
-#include "spark_wiring_random.h"
 #include "application.h"
-//#include "Arduino.h"
 
 
 class RGBMoodLifx {
