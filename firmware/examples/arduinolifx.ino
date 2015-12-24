@@ -30,9 +30,9 @@
 #include <EthernetUdp.h>
 #include <EEPROM.h>   */
 
-#include "lifx.h"
-#include "RGBMoodLifx.h"
-#include "color.h"
+#include "RGBMoodLifx/lifx.h"
+#include "RGBMoodLifx/RGBMoodLifx.h"
+#include "RGBMoodLifx/color.h"
 
 // Function declaration
 void printLifxPacket(LifxPacket &pkt);
