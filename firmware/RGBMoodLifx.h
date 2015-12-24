@@ -11,9 +11,9 @@
 
 #ifndef GUARD_RGB
 #define GUARD_RGB
+//#include "Arduino.h"
 
 #include "application.h"
-
 
 class RGBMoodLifx {
   public:
@@ -28,7 +28,7 @@ class RGBMoodLifx {
     };
 
     RGBMoodLifx(uint8_t = 0, uint8_t = 0, uint8_t = 0); // New instance with output pin specified.
-    void setHSB(uint16_t , uint16_t , uint16_t);     // Set a fixed color from HSB color space.
+    void setHSB(uint16_t, uint16_t, uint16_t);     // Set a fixed color from HSB color space.
     void setRGB(uint16_t, uint16_t, uint16_t);     // Set a fixed color from RGB color space.
     void setRGB(uint32_t); // Using Color class.
     void fadeHSB(uint16_t, uint16_t, uint16_t, bool = true);    // Fade to a new color (given in HSB color space).

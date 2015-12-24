@@ -1,14 +1,13 @@
 /* Source: http://stackoverflow.com/questions/3018313/algorithm-to-convert-rgb-to-hsv-and-hsv-to-rgb-in-range-0-255-for-both */
 #include "math.h"
 
-
-typedef struct rgb {
+struct rgb {
     double r;       // percent
     double g;       // percent
     double b;       // percent
 };
 
-typedef struct hsv {
+struct hsv {
     double h;       // angle in degrees
     double s;       // percent
     double v;       // percent
@@ -67,7 +66,6 @@ rgb hsv2rgb(hsv in)
         out.b = in.v;
         return out;
     }
-    
     hh = in.h;
     if(hh >= 360.0) hh = 0.0;
     hh /= 60.0;

@@ -6,15 +6,11 @@
  ethernet-ready Arduino and control it from the LIFX app!
 
  Notes:
- - Currently you cannot control an Arduino bulb and real LIFX bulbs at
- the same time with the Android LIFX app. Untested with the iOS LIFX
- app.
- - Only one client (e.g. app) can connect to the bulb at once
+ - Only one Client (e.g. app) can connect to the bulb at once
 
  Set the following variables below to suit your Arduino and network
  environment:
  - mac (unique mac address for your arduino)
- - site_mac (same as mac (above))
  - redPin (PWM pin for RED)
  - greenPin  (PWM pin for GREEN)
  - bluePin  (PWM pin for BLUE)
@@ -25,17 +21,18 @@
 
  And also the RGBMood library by Harold Waterkeyn, which was modified
  slightly to support powering down the LED
-
- ####################################################################
-
-Ported to Spark by @kennethlimcp, @mdma, @peekay123, @Hootie81 and @lightx on 09 Sept 2014
-
  */
-// This #include statement was automatically added by the Spark IDE.
-#include "RGBMoodLifx/RGBMoodLifx.h"
-#include "RGBMoodLifx/color.h"
-#include "RGBMoodLifx/lifx.h"
-#include "RGBMoodLifx/myUDP.h"
+
+
+/*#include <SPI.h>
+#include <Ethernet.h>
+#include <EthernetServer.h>
+#include <EthernetUdp.h>
+#include <EEPROM.h>   */
+
+#include "lifx.h"
+#include "RGBMoodLifx.h"
+#include "color.h"
 
 // Function declaration
 void printLifxPacket(LifxPacket &pkt);
@@ -46,24 +43,23 @@ void handleRequest(LifxPacket &request);
 void processRequest(byte *packetBuffer, int packetSize, LifxPacket &request);
 void setLight();
 
-
 // set to 1 to output debug messages (including packet dumps) to serial (38400 baud)
 const boolean DEBUG = 0;
 
 // Enter a MAC address and IP address for your controller below.
 // The IP address will be dependent on your local network:
 byte mac[] = {
-  0xD0, 0x73, 0xD5, 0x00, 0xDE, 0x00 };
+  0xDE, 0xAD, 0xDE, 0xAD, 0xDE, 0xAD };
 byte site_mac[] = {
-  0xD0, 0x73, 0xD5, 0x00, 0xDE, 0x00 };
+  0x4c, 0x49, 0x46, 0x58, 0x56, 0x32 }; // spells out "LIFXV2" - version 2 of the app changes the site address to this...
 
 // pins for the RGB LED:
-const int redPin = A4;
-const int greenPin = A5;
-const int bluePin = A6;
+const int redPin = 4;
+const int greenPin = 5;
+const int bluePin = 6;
 
 // label (name) for this bulb
-char bulbLabel[LifxBulbLabelLength] = "Spark";
+char bulbLabel[LifxBulbLabelLength] = "Arduino Bulb";
 
 // tags for this bulb
 char bulbTags[LifxBulbTagsLength] = {
@@ -78,8 +74,12 @@ long bri = 65535;
 long kel = 2000;
 long dim = 0;
 
-// Ethernet instances, for UDP broadcasting, and TCP server and client
-myUDP Udp;
+// Ethernet instances, for UDP broadcasting, and TCP server and Client
+/*EthernetUDP Udp;
+EthernetServer TcpServer = EthernetServer(LifxPort);
+EthernetClient Client;*/
+
+UDP Udp;
 TCPServer Server = TCPServer(LifxPort);
 TCPClient Client;
 
@@ -87,19 +87,14 @@ RGBMoodLifx LIFXBulb(redPin, greenPin, bluePin);
 
 void setup() {
 
-  Serial.begin(115200);
-  //while(!Serial.available()) Spark.process();
+  Serial.begin(38400);
   Serial.println(F("LIFX bulb emulator for Arduino starting up..."));
 
-
-  //On Spark, this is automatically handled
-  // start the Ethernet - using DHCP so keep trying until we get an address
-  /*
-  while(Server.begin() == 0) {
+  /*// start the Ethernet - using DHCP so keep trying until we get an address
+  while(Ethernet.begin(mac) == 0) {
     Serial.println(F("Failed to get DHCP address, trying again..."));
     delay(1000);
-  }
-  */
+  }*/
 
   Serial.print(F("IP address for this bulb: "));
   Serial.println(WiFi.localIP());
@@ -117,7 +112,9 @@ void setup() {
   LIFXBulb.setFadingSpeed(20);
 
   // read in settings from EEPROM (if they exist) for bulb label and tags
-  if(EEPROM.read(EEPROM_CONFIG_START) == EEPROM_CONFIG[0] && EEPROM.read(EEPROM_CONFIG_START+1) == EEPROM_CONFIG[1] && EEPROM.read(EEPROM_CONFIG_START+2) == EEPROM_CONFIG[2]) {
+  if(EEPROM.read(EEPROM_CONFIG_START) == EEPROM_CONFIG[0]
+    && EEPROM.read(EEPROM_CONFIG_START+1) == EEPROM_CONFIG[1]
+    && EEPROM.read(EEPROM_CONFIG_START+2) == EEPROM_CONFIG[2]) {
       if(DEBUG) {
         Serial.println(F("Config exists in EEPROM, reading..."));
         Serial.print(F("Bulb label: "));
@@ -201,14 +198,15 @@ void setup() {
   setLight();
 }
 
-
-
 void loop() {
+
   LIFXBulb.tick();
+
   // buffers for receiving and sending data
   byte PacketBuffer[128]; //buffer to hold incoming packet,
 
   Client = Server.available();
+
   if (Client == true) {
     // read incoming data
     int packetSize = 0;
@@ -231,15 +229,15 @@ void loop() {
       }
       Serial.println();
     }
+
     // push the data into the LifxPacket structure
     LifxPacket request;
-    processRequest(PacketBuffer, sizeof(PacketBuffer), request);
+    processRequest(PacketBuffer, packetSize, request);
 
     //respond to the request
     handleRequest(request);
   }
-
-    // if there's UDP data available, read a packet
+  // if there's UDP data available, read a packet
   int packetSize = Udp.parsePacket();
   if(packetSize) {
     Udp.read(PacketBuffer, 128);
@@ -266,54 +264,10 @@ void loop() {
     handleRequest(request);
 
   }
-  //Not available in Spark
+
   //Ethernet.maintain();
 
   //delay(10);
-}
-
-
-void setLight() {
-  if(DEBUG) {
-    Serial.print(F("Set light - "));
-    Serial.print(F("hue: "));
-    Serial.print(hue);
-    Serial.print(F(", sat: "));
-    Serial.print(sat);
-    Serial.print(F(", bri: "));
-    Serial.print(bri);
-    Serial.print(F(", kel: "));
-    Serial.print(kel);
-    Serial.print(F(", power: "));
-    Serial.print(power_status);
-    Serial.println(power_status ? " (on)" : "(off)");
-  }
-
-  if(power_status) {
-    int this_hue = map(hue, 0, 65535, 0, 359);
-    int this_sat = map(sat, 0, 65535, 0, 255);
-    int this_bri = map(bri, 0, 65535, 0, 255);
-
-    // if we are setting a "white" colour (kelvin temp)
-    if(kel > 0 && this_sat < 1) {
-      // convert kelvin to RGB
-      rgb kelvin_rgb;
-      kelvin_rgb = kelvinToRGB(kel);
-
-      // convert the RGB into HSV
-      hsv kelvin_hsv;
-      kelvin_hsv = rgb2hsv(kelvin_rgb);
-
-      // set the new values ready to go to the bulb (brightness does not change, just hue and saturation)
-      this_hue = kelvin_hsv.h;
-      this_sat = map(kelvin_hsv.s*1000, 0, 1000, 0, 255); //multiply the sat by 1000 so we can map the percentage value returned by rgb2hsv
-    }
-
-    LIFXBulb.fadeHSB(this_hue, this_sat, this_bri);
-  }
-  else {
-    LIFXBulb.fadeHSB(0, 0, 0);
-  }
 }
 
 void processRequest(byte *packetBuffer, int packetSize, LifxPacket &request) {
@@ -347,7 +301,6 @@ void processRequest(byte *packetBuffer, int packetSize, LifxPacket &request) {
 
   request.data_size = i;
 }
-
 
 void handleRequest(LifxPacket &request) {
   if(DEBUG) {
@@ -571,6 +524,101 @@ void handleRequest(LifxPacket &request) {
     break;
 
 
+  case GET_VERSION_STATE:
+    {
+      // respond to get command
+      response.packet_type = VERSION_STATE;
+      response.protocol = LifxProtocol_AllBulbsResponse;
+      byte VersionData[] = {
+        lowByte(LifxBulbVendor),
+        highByte(LifxBulbVendor),
+        0x00,
+        0x00,
+        lowByte(LifxBulbProduct),
+        highByte(LifxBulbProduct),
+        0x00,
+        0x00,
+        lowByte(LifxBulbVersion),
+        highByte(LifxBulbVersion),
+        0x00,
+        0x00
+        };
+
+      memcpy(response.data, VersionData, sizeof(VersionData));
+      response.data_size = sizeof(VersionData);
+      sendPacket(response);
+
+      /*
+      // respond again to get command (real bulbs respond twice, slightly diff data (see below)
+      response.packet_type = VERSION_STATE;
+      response.protocol = LifxProtocol_AllBulbsResponse;
+      byte VersionData2[] = {
+        lowByte(LifxVersionVendor), //vendor stays the same
+        highByte(LifxVersionVendor),
+        0x00,
+        0x00,
+        lowByte(LifxVersionProduct*2), //product is 2, rather than 1
+        highByte(LifxVersionProduct*2),
+        0x00,
+        0x00,
+        0x00, //version is 0, rather than 1
+        0x00,
+        0x00,
+        0x00
+        };
+
+      memcpy(response.data, VersionData2, sizeof(VersionData2));
+      response.data_size = sizeof(VersionData2);
+      sendPacket(response);
+      */
+    }
+    break;
+
+
+  case GET_MESH_FIRMWARE_STATE:
+    {
+      // respond to get command
+      response.packet_type = MESH_FIRMWARE_STATE;
+      response.protocol = LifxProtocol_AllBulbsResponse;
+      // timestamp data comes from observed packet from a LIFX v1.5 bulb
+      byte MeshVersionData[] = {
+        0x00, 0x2e, 0xc3, 0x8b, 0xef, 0x30, 0x86, 0x13, //build timestamp
+        0xe0, 0x25, 0x76, 0x45, 0x69, 0x81, 0x8b, 0x13, //install timestamp
+        lowByte(LifxFirmwareVersionMinor),
+        highByte(LifxFirmwareVersionMinor),
+        lowByte(LifxFirmwareVersionMajor),
+        highByte(LifxFirmwareVersionMajor)
+        };
+
+      memcpy(response.data, MeshVersionData, sizeof(MeshVersionData));
+      response.data_size = sizeof(MeshVersionData);
+      sendPacket(response);
+    }
+    break;
+
+
+  case GET_WIFI_FIRMWARE_STATE:
+    {
+      // respond to get command
+      response.packet_type = WIFI_FIRMWARE_STATE;
+      response.protocol = LifxProtocol_AllBulbsResponse;
+      // timestamp data comes from observed packet from a LIFX v1.5 bulb
+      byte WifiVersionData[] = {
+        0x00, 0xc8, 0x5e, 0x31, 0x99, 0x51, 0x86, 0x13, //build timestamp
+        0xc0, 0x0c, 0x07, 0x00, 0x48, 0x46, 0xd9, 0x43, //install timestamp
+        lowByte(LifxFirmwareVersionMinor),
+        highByte(LifxFirmwareVersionMinor),
+        lowByte(LifxFirmwareVersionMajor),
+        highByte(LifxFirmwareVersionMajor)
+        };
+
+      memcpy(response.data, WifiVersionData, sizeof(WifiVersionData));
+      response.data_size = sizeof(WifiVersionData);
+      sendPacket(response);
+    }
+    break;
+
+
   default:
     {
       if(DEBUG) {
@@ -588,7 +636,6 @@ void sendPacket(LifxPacket &pkt) {
     sendTCPPacket(pkt);
   }
 }
-
 
 unsigned int sendUDPPacket(LifxPacket &pkt) {
   // broadcast packet on local subnet
@@ -662,7 +709,6 @@ unsigned int sendUDPPacket(LifxPacket &pkt) {
 
   return LifxPacketSize + pkt.data_size;
 }
-
 
 unsigned int sendTCPPacket(LifxPacket &pkt) {
 
@@ -817,5 +863,48 @@ void printLifxPacket(LifxPacket &pkt) {
   for(int i = 0; i < pkt.data_size; i++) {
     Serial.print(pkt.data[i], HEX);
     Serial.print(SPACE);
+  }
+}
+
+void setLight() {
+  if(DEBUG) {
+    Serial.print(F("Set light - "));
+    Serial.print(F("hue: "));
+    Serial.print(hue);
+    Serial.print(F(", sat: "));
+    Serial.print(sat);
+    Serial.print(F(", bri: "));
+    Serial.print(bri);
+    Serial.print(F(", kel: "));
+    Serial.print(kel);
+    Serial.print(F(", power: "));
+    Serial.print(power_status);
+    Serial.println(power_status ? " (on)" : "(off)");
+  }
+
+  if(power_status) {
+    int this_hue = map(hue, 0, 65535, 0, 359);
+    int this_sat = map(sat, 0, 65535, 0, 255);
+    int this_bri = map(bri, 0, 65535, 0, 255);
+
+    // if we are setting a "white" colour (kelvin temp)
+    if(kel > 0 && this_sat < 1) {
+      // convert kelvin to RGB
+      rgb kelvin_rgb;
+      kelvin_rgb = kelvinToRGB(kel);
+
+      // convert the RGB into HSV
+      hsv kelvin_hsv;
+      kelvin_hsv = rgb2hsv(kelvin_rgb);
+
+      // set the new values ready to go to the bulb (brightness does not change, just hue and saturation)
+      this_hue = kelvin_hsv.h;
+      this_sat = map(kelvin_hsv.s*1000, 0, 1000, 0, 255); //multiply the sat by 1000 so we can map the percentage value returned by rgb2hsv
+    }
+
+    LIFXBulb.fadeHSB(this_hue, this_sat, this_bri);
+  }
+  else {
+    LIFXBulb.fadeHSB(0, 0, 0);
   }
 }

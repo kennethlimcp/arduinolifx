@@ -1,7 +1,7 @@
 #include "RGBMoodLifx.h"
 
 // Dim curve
-// Used to make 'dimming' look more natural.
+// Used to make 'dimming' look more natural. 
 uint8_t dc[256] = {
     0,   1,   1,   2,   2,   2,   2,   2,   2,   3,   3,   3,   3,   3,   3,   3,
     3,   3,   3,   3,   3,   3,   3,   4,   4,   4,   4,   4,   4,   4,   4,   4,
@@ -174,8 +174,6 @@ void RGBMoodLifx::tick() {
           setHSB(random(345, 435), random(190, 255), random(120,255));
           holding_color_ = random(10, 500);
           break;
-        default:
-            break;
       }
     }
   }
@@ -216,13 +214,13 @@ void RGBMoodLifx::hsb2rgb(uint16_t hue, uint16_t sat, uint16_t val, uint16_t& re
         g = (((val-base)*hue)/60)+base;
         b = base;
         break;
-
+	
       case 1:
         r = (((val-base)*(60-(hue%60)))/60)+base;
         g = val;
         b = base;
         break;
-
+	
       case 2:
         r = base;
         g = val;
@@ -234,22 +232,22 @@ void RGBMoodLifx::hsb2rgb(uint16_t hue, uint16_t sat, uint16_t val, uint16_t& re
         g = (((val-base)*(60-(hue%60)))/60)+base;
         b = val;
         break;
-
+	
       case 4:
         r = (((val-base)*(hue%60))/60)+base;
         g = base;
         b = val;
         break;
-
+	
       case 5:
         r = val;
         g = base;
         b = (((val-base)*(60-(hue%60)))/60)+base;
         break;
-    }
+    }  
     red   = r;
     green = g;
-    blue  = b;
+    blue  = b; 
   }
 }
 
